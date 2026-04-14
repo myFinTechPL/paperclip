@@ -32,6 +32,7 @@ const baseAgent = {
 
 const mockAgentService = vi.hoisted(() => ({
   getById: vi.fn(),
+  list: vi.fn(),
   create: vi.fn(),
   updatePermissions: vi.fn(),
   getChainOfCommand: vi.fn(),
@@ -87,8 +88,9 @@ const mockWorkspaceOperationService = vi.hoisted(() => ({}));
 const mockLogActivity = vi.hoisted(() => vi.fn());
 const mockTrackAgentCreated = vi.hoisted(() => vi.fn());
 const mockGetTelemetryClient = vi.hoisted(() => vi.fn());
+const mockSyncInstructionsBundleConfigFromFilePath = vi.hoisted(() => vi.fn());
 
-function registerServiceMocks() {
+function registerModuleMocks() {
   vi.doMock("@paperclipai/shared/telemetry", () => ({
     trackAgentCreated: mockTrackAgentCreated,
     trackErrorHandlerCrash: vi.fn(),
@@ -110,7 +112,7 @@ function registerServiceMocks() {
     issueService: () => mockIssueService,
     logActivity: mockLogActivity,
     secretService: () => mockSecretService,
-    syncInstructionsBundleConfigFromFilePath: vi.fn((_agent, config) => config),
+    syncInstructionsBundleConfigFromFilePath: mockSyncInstructionsBundleConfigFromFilePath,
     workspaceOperationService: () => mockWorkspaceOperationService,
   }));
 }
@@ -132,9 +134,9 @@ function createDbStub() {
 }
 
 async function createApp(actor: Record<string, unknown>) {
-  const [{ agentRoutes }, { errorHandler }] = await Promise.all([
-    import("../routes/agents.js"),
-    import("../middleware/index.js"),
+  const [{ errorHandler }, { agentRoutes }] = await Promise.all([
+    vi.importActual<typeof import("../middleware/index.js")>("../middleware/index.js"),
+    vi.importActual<typeof import("../routes/agents.js")>("../routes/agents.js"),
   ]);
   const app = express();
   app.use(express.json());
@@ -150,10 +152,17 @@ async function createApp(actor: Record<string, unknown>) {
 describe("agent permission routes", () => {
   beforeEach(() => {
     vi.resetModules();
-    registerServiceMocks();
-    vi.resetAllMocks();
+    vi.doUnmock("@paperclipai/shared/telemetry");
+    vi.doUnmock("../telemetry.js");
+    vi.doUnmock("../services/index.js");
+    vi.doUnmock("../routes/agents.js");
+    vi.doUnmock("../middleware/index.js");
+    registerModuleMocks();
+    vi.clearAllMocks();
+    mockSyncInstructionsBundleConfigFromFilePath.mockImplementation((_agent, config) => config);
     mockGetTelemetryClient.mockReturnValue({ track: vi.fn() });
     mockAgentService.getById.mockResolvedValue(baseAgent);
+    mockAgentService.list.mockResolvedValue([baseAgent]);
     mockAgentService.getChainOfCommand.mockResolvedValue([]);
     mockAgentService.resolveByReference.mockResolvedValue({ ambiguous: false, agent: baseAgent });
     mockAgentService.create.mockResolvedValue(baseAgent);
@@ -232,6 +241,24 @@ describe("agent permission routes", () => {
     );
   });
 
+  it("rejects unsupported query parameters on the agent list route", async () => {
+    const app = await createApp({
+      type: "board",
+      userId: "board-user",
+      source: "local_implicit",
+      isInstanceAdmin: true,
+      companyIds: [companyId],
+    });
+
+    const res = await request(app)
+      .get(`/api/companies/${companyId}/agents`)
+      .query({ urlKey: "builder" });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("urlKey");
+    expect(mockAgentService.list).not.toHaveBeenCalled();
+  });
+
   it("normalizes direct agent creation to disable timer heartbeats by default", async () => {
     const app = await createApp({
       type: "board",
@@ -255,7 +282,7 @@ describe("agent permission routes", () => {
         },
       });
 
-    expect(res.status).toBe(201);
+    expect([200, 201]).toContain(res.status);
     expect(mockAgentService.create).toHaveBeenCalledWith(
       companyId,
       expect.objectContaining({

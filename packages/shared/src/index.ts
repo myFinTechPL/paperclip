@@ -3,6 +3,7 @@ export {
   COMPANY_STATUSES,
   DEPLOYMENT_MODES,
   DEPLOYMENT_EXPOSURES,
+  BIND_MODES,
   AUTH_BASE_URL_MODES,
   AGENT_STATUSES,
   AGENT_ADAPTER_TYPES,
@@ -79,6 +80,7 @@ export {
   type CompanyStatus,
   type DeploymentMode,
   type DeploymentExposure,
+  type BindMode,
   type AuthBaseUrlMode,
   type AgentStatus,
   type AgentAdapterType,
@@ -148,6 +150,16 @@ export {
   type PluginEventType,
   type PluginBridgeErrorCode,
 } from "./constants.js";
+
+export {
+  ALL_INTERFACES_BIND_HOST,
+  LOOPBACK_BIND_HOST,
+  inferBindModeFromHost,
+  isAllInterfacesHost,
+  isLoopbackHost,
+  resolveRuntimeBind,
+  validateConfiguredBindMode,
+} from "./network-bind.js";
 
 export type {
   Company,
@@ -220,7 +232,11 @@ export type {
   ExecutionWorkspaceCloseReadiness,
   ExecutionWorkspaceCloseReadinessState,
   ProjectWorkspaceRuntimeConfig,
+  WorkspaceCommandDefinition,
+  WorkspaceCommandKind,
+  WorkspaceRuntimeControlTarget,
   WorkspaceRuntimeService,
+  WorkspaceRuntimeServiceStateMap,
   WorkspaceOperation,
   WorkspaceOperationPhase,
   WorkspaceOperationStatus,
@@ -289,6 +305,7 @@ export type {
   DashboardSummary,
   ActivityEvent,
   SidebarBadges,
+  SidebarOrderPreference,
   InboxDismissal,
   CompanyMembership,
   PrincipalPermissionGrant,
@@ -361,6 +378,21 @@ export type {
   QuotaWindow,
   ProviderQuotaResult,
 } from "./types/index.js";
+
+export {
+  sidebarOrderPreferenceSchema,
+  upsertSidebarOrderPreferenceSchema,
+  type UpsertSidebarOrderPreference,
+} from "./validators/sidebar-preferences.js";
+
+export { workspaceRuntimeControlTargetSchema } from "./validators/execution-workspace.js";
+export {
+  findWorkspaceCommandDefinition,
+  listWorkspaceCommandDefinitions,
+  listWorkspaceServiceCommandDefinitions,
+  matchWorkspaceRuntimeServiceToCommand,
+  scoreWorkspaceRuntimeServiceMatch,
+} from "./workspace-commands.js";
 
 export {
   DEFAULT_FEEDBACK_DATA_SHARING_PREFERENCE,

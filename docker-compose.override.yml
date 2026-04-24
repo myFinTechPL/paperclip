@@ -3,14 +3,22 @@ services:
     environment:
       - HOST=0.0.0.0
       - OBSIDIAN_API_KEY=1c688774012cfdd1440c21bab81c636c9b2358506031c5999d09a8b93af5f00f
-      - GH_TOKEN=${GH_TOKEN}
+      # GH_TOKEN intentionally not passed — agents must use Archon workflows for all GitHub operations
     volumes:
       - ./data/docker-paperclip:/paperclip
       - /Users/tomek/Obsidian_vault/Projects/paperclip/workspace:/workspace
+      - /Users/tomek/Obsidian_vault/Projects/doc-compare-studio/workspace:/workspace-dcs
+      - /Users/tomek/dev/doc-compare-studio:/workspace/doc-compare-studio:ro
       - /Users/tomek/.claude:/paperclip/.claude
       - /Users/tomek/dev/claude-agent-env:/workspace/claude-agent-env
       # typingsense repo mounts removed Phase 6 — Archon exclusively owns codebase access
-    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('net').createConnection(54329,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
     ports:
       - "3100:3100"
     extra_hosts:
